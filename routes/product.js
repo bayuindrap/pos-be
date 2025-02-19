@@ -16,7 +16,7 @@ const selectProducts = (page, limit, searchTerm) => {
           if (page !== undefined && limit !== undefined) {
             const offset = (page - 1) * limit;
             query = `
-                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE
                       FROM PRODUCTS A
                       LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
                       WHERE A.NAME LIKE ?
@@ -25,7 +25,7 @@ const selectProducts = (page, limit, searchTerm) => {
             params = [`%${searchTerm || ''}%`, limit, offset];
           } else {
             query = `
-                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE
                       FROM PRODUCTS A
                       LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
                       WHERE A.NAME LIKE ?
@@ -70,15 +70,42 @@ const countProducts = (searchTerm) => {
     });
   };
 
+const checkProductExists = (productName) => {
+    return new Promise((resolve, reject) => {
+      getConnection()
+        .then((connection) => {
+          connection.query(
+            `SELECT COUNT(*) AS count FROM PRODUCTS WHERE NAME = ?`,
+            [productName],
+            (error, results) => {
+              connection.release();
+              if (error) {
+                return reject(error);
+              }
+              if (results[0].count > 0) {
+                return resolve(true);
+              } else {
+                return resolve(false);
+              }
+            }
+          );
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  };
+  
+
 const addProducts = (dataProducts) => {
     return new Promise((resolve, reject) => {
       getConnection()
         .then((connection) => {
           connection.query(
             `INSERT INTO PRODUCTS ` +
-              `(NAME, PRICE, ID_CATEGORY, STOCK, IMAGE)` +
-              `VALUES(?, ?, ?, ?, ?)`,
-            [dataProducts.PRODUCT_NAME, dataProducts.PRICE, dataProducts.CATEGORY, dataProducts.STOCK, dataProducts.IMAGE],
+              `(ID_PRODUCTS, NAME, PRICE, ID_CATEGORY, STOCK, IMAGE)` +
+              `VALUES(?, ?, ?, ?, ?, ?)`,
+            [dataProducts.PRODUCT_ID, dataProducts.PRODUCT_NAME, dataProducts.PRICE, dataProducts.CATEGORY, dataProducts.STOCK, dataProducts.IMAGE],
             (error, elements) => {
               connection.release();
               if (error) {
@@ -94,7 +121,7 @@ const addProducts = (dataProducts) => {
     });
   };
 
-  const selectCategory = (page, limit, searchTerm) => {
+const selectCategory = (page, limit, searchTerm) => {
     return new Promise((resolve, reject) => {
       getConnection()
         .then((connection) => {
@@ -118,6 +145,41 @@ const addProducts = (dataProducts) => {
         });
     });
   };
+
+const getLastProdId = () => {
+    return new Promise((resolve, reject) => {
+      getConnection()
+        .then((connection) => {
+          connection.query(
+            'SELECT ID_PRODUCTS FROM PRODUCTS ORDER BY ID_PRODUCTS DESC LIMIT 1',
+            [],
+            (error, results) => {
+              connection.release();
+              if (error) {
+                return reject(error);
+              }
+              if (results.length > 0) {
+                
+                const lastId = results[0].ID_PRODUCTS;
+  
+                // Ekstrak bagian numerik dari lastId menggunakan regex untuk menangani format yang berbeda (VID00010, VID00100, dll)
+                const numericPart = parseInt(lastId.match(/\d+/)[0]);
+  
+                // Tambahkan 1 ke bagian numerik dan pad dengan nol di depan agar memiliki 5 digit
+                const newId = 'GLS' + String(numericPart + 1).padStart(3, '0');
+                return resolve(newId);
+              } else {
+                return resolve('GLS');
+              }
+            },
+          );
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  };
+  
 
 router.post('/', verifyToken, async (req, res) => {
     try {
@@ -194,7 +256,7 @@ router.get('/download', async (req, res) => {
     }
   });
 
-router.post('/add', async (req, res) => {
+router.post('/add', verifyToken, async (req, res) => {
     try {
       const {
         prodName,
@@ -228,22 +290,18 @@ router.post('/add', async (req, res) => {
           message: 'Stock cant be empty',
         });
       }
-      
-      // const parsedDate = parse(dob, 'dd-MM-yyyy', new Date());
-      // const outputDate = format(parsedDate, 'yyyy-MM-dd');
-      // const emailChecks = await emailCheck(email);
-      // if(emailChecks.length > 0){
-      //     return res.status(200).send({
-      //         "status": false,
-      //         "message": "Email ini tidak bisa digunakan/sudah pernah terdaftar"
-      //     });
-      // }
-      // const prefixUsr = await getPrefix('PREFIX_USR');
-      // const prefixPatient = await getPrefix('PREFIX_PTN');
-      // const usrIdGenerated = generateId(prefixUsr[0].VAL4);
-      // const patiendIdGenerated = generateId(prefixPatient[0].VAL4);
+      const productExists = await checkProductExists(prodName);
+      if (productExists) {
+        return res.status(401).send({
+          status: false,
+          message: 'Product with this name already exists',
+        });
+      }
 
+      const prodId = await getLastProdId()
+      
       const dataProducts = {
+       PRODUCT_ID: prodId,
        PRODUCT_NAME: prodName,
        PRICE: price,
        CATEGORY: category,

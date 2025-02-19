@@ -55,7 +55,7 @@ const saveRefreshToken = (refreshToken, userId) => {
     return new Promise((resolve, reject) => {
         getConnection().then(connection => {
             connection.query(
-                'UPDATE users SET REFRESH_TOKEN = ? WHERE ID_USER = ?',
+                'UPDATE users SET REFRESH_TOKEN = ? WHERE ID_USERS = ?',
                 [refreshToken, userId],
                 (error, results) => {
                     connection.release();
