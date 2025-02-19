@@ -2,7 +2,8 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import bearerToken from 'express-bearer-token';
 import express from 'express';
-import auth from './routes/auth.js'
+import authRoute from './routes/auth.js'
+import productRoute from './routes/product.js'
 
 dotenv.config();
 
@@ -18,7 +19,8 @@ app.use(express.json())
 
 
 
-app.use('/login', auth)
+app.use('/login', authRoute)
+app.use('/products', productRoute)
 
 
 

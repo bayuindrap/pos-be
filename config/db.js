@@ -14,7 +14,7 @@ const getConnection = () => {
             if(err){
                 reject(err)
             }else{
-                resolve(connectio)
+                resolve(connection)
             }
         })
     })

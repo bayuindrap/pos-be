@@ -51,9 +51,50 @@ const selectUser = (username, pass) => {
     })
 }
 
+const saveRefreshToken = (refreshToken, userId) => {
+    return new Promise((resolve, reject) => {
+        getConnection().then(connection => {
+            connection.query(
+                'UPDATE users SET REFRESH_TOKEN = ? WHERE ID_USER = ?',
+                [refreshToken, userId],
+                (error, results) => {
+                    connection.release();
+                    if (error) {
+                        return reject(error);
+                    }
+                    resolve(results);
+                }
+            );
+        }).catch(error => {
+            reject(error);
+        });
+    });
+};
+
+const updateTokenLogout = (token, userId) => {
+    return new Promise((resolve, reject) => {
+        getConnection().then(connection => {
+            connection.query('UPDATE USERS SET REFRESH_TOKEN = ? WHERE ID_USER = ?', [token, userId], (error, elements) => {
+                connection.release();
+                if (error) {
+                    return reject(error);
+                }
+                return resolve(elements);
+            });
+          })
+          .catch(error => {
+            reject(error);
+          });
+    });
+};
+
+
+
+
 router.post('/', async(req, res) => {
     try {
         const {username, pass} = req.body
+        // console.log("cek", username, pass)
         const results = await selectUser(username, pass)
 
         if (results.length < 1) {
@@ -62,10 +103,10 @@ router.post('/', async(req, res) => {
                 "message": "Invalid username / password",
             });
         }
-
+        const userId = results[0].ID_USER;
         const token = generateToken(results[0]);
         const refreshToken = generateRefreshToken(results[0]);
-
+        await saveRefreshToken(refreshToken, userId);
          res.send({
             "status": true,
             "message": "Login Success",
@@ -82,5 +123,33 @@ router.post('/', async(req, res) => {
         })
     }
 })
+
+router.post('/updateToken', async (req, res) => {
+    try {
+        const { token,userId } = req.body;
+
+        if (!(userId)) {
+            return res.status(200).send({
+                "status": false,
+                "message": "User Id cant null"
+            });
+        }
+        
+        const resultElements = await updateTokenLogout(token,userId);
+
+        return res.send({
+            "status": true,
+            "message": "Update success",
+            "data":resultElements
+        });
+    } catch (error) {
+        //console.log(error);
+        return res.status(401).send({
+            "status": true,
+            "message": error.message
+        });
+    }
+
+});
 
 export default router
