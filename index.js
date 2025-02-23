@@ -4,6 +4,7 @@ import bearerToken from 'express-bearer-token';
 import express from 'express';
 import authRoute from './routes/auth.js'
 import productRoute from './routes/product.js'
+import transactionRoute from './routes/transactions.js'
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(express.json())
 
 app.use('/login', authRoute)
 app.use('/products', productRoute)
+app.use('/transaction', transactionRoute)
 
 
 

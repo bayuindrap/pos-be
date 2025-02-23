@@ -16,7 +16,7 @@ const selectProducts = (page, limit, searchTerm) => {
           if (page !== undefined && limit !== undefined) {
             const offset = (page - 1) * limit;
             query = `
-                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS
                       FROM PRODUCTS A
                       LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
                       WHERE A.NAME LIKE ?
@@ -25,13 +25,39 @@ const selectProducts = (page, limit, searchTerm) => {
             params = [`%${searchTerm || ''}%`, limit, offset];
           } else {
             query = `
-                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS
                       FROM PRODUCTS A
                       LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
                       WHERE A.NAME LIKE ?
                   `;
             params = [`%${searchTerm || ''}%`];
           }
+          connection.query(query, params, (error, elements) => {
+            connection.release();
+            if (error) {
+              return reject(error);
+            }
+            return resolve(elements);
+          });
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  };
+
+  const selectAllProducts = (searchTerm) => {
+    return new Promise((resolve, reject) => {
+      getConnection()
+        .then((connection) => {
+          let query, params;
+            query = `
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS
+                      FROM PRODUCTS A
+                      LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
+                      WHERE A.NAME LIKE ?
+                  `;
+            params = [`%${searchTerm || ''}%`];
           connection.query(query, params, (error, elements) => {
             connection.release();
             if (error) {
@@ -212,6 +238,35 @@ router.post('/', verifyToken, async (req, res) => {
     }
   });
 
+router.post('/all', verifyToken, async (req, res) => {
+    try {
+      const { searchTerm = ''} = req.body;
+      let resultsElement
+  
+        resultsElement = await selectAllProducts(searchTerm);
+
+      if (resultsElement.length === 0) {
+        return res.status(200).send({
+          status: false,
+          message: 'Data not found.',
+          data: [],
+          totalItems: 0,
+        });
+      }
+      return res.status(200).send({
+        status: true,
+        message: 'Data available',
+        data: resultsElement,
+      });
+    } catch (error) {
+      return res.status(500).send({
+        status: false,
+        message: error.message,
+        data: [],
+      });
+    }
+  });
+
 router.get('/download', async (req, res) => {
     try {
       let resultElements;
@@ -229,6 +284,7 @@ router.get('/download', async (req, res) => {
         { header: 'Category', key: 'CATEGORY', width: 10 },
         { header: 'Price', key: 'PRICE', width: 10 },
         { header: 'Stock', key: 'STOCK', width: 10 },
+        { header: 'Url Image', key: 'IMAGE', width: 10 },
       ];
       resultElements.forEach((row) => {
         worksheet.addRow({
@@ -236,6 +292,7 @@ router.get('/download', async (req, res) => {
           CATEGORY: row.CATEGORY,
           PRICE: row.PRICE,
           STOCK: row.STOCK,
+          IMAGE: row.IMAGE,
         });
       });
       const fileName = `product-data.xlsx`;
