@@ -5,6 +5,7 @@ import express from 'express';
 import authRoute from './routes/auth.js'
 import productRoute from './routes/product.js'
 import transactionRoute from './routes/transactions.js'
+import dashboardRoutes from './routes/dashboard.js'
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use(express.json())
 app.use('/login', authRoute)
 app.use('/products', productRoute)
 app.use('/transaction', transactionRoute)
+app.use('/dashboard', dashboardRoutes)
 
 
 
