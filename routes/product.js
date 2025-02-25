@@ -46,7 +46,7 @@ const selectProducts = (page, limit, searchTerm) => {
     });
   };
 
-  const selectAllProducts = (searchTerm) => {
+const selectAllProducts = (searchTerm) => {
     return new Promise((resolve, reject) => {
       getConnection()
         .then((connection) => {
@@ -267,7 +267,7 @@ router.post('/all', verifyToken, async (req, res) => {
     }
   });
 
-router.get('/download', async (req, res) => {
+router.get('/download', verifyToken, async (req, res) => {
     try {
       let resultElements;
       resultElements = await selectProducts();
@@ -381,7 +381,7 @@ router.post('/add', verifyToken, async (req, res) => {
     }
   });
 
-router.post('/category', async (req, res) => {
+router.post('/category', verifyToken, async (req, res) => {
     try {
       let resultsElement
 

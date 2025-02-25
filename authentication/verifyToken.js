@@ -1,9 +1,9 @@
 import jwt from 'jsonwebtoken';
 
-// Middleware untuk memverifikasi JWT
+
 const verifyToken = (req, res, next) => {
-    const token = req.headers['authorization']?.split(' ')[1]; // Ambil token dari Authorization header
-    console.log ("token backend", token)
+    const token = req.headers['authorization']?.split(' ')[1]; 
+    console.log ("received token", token)
     if (!token) {
         return res.status(403).send({
             "status": false,
@@ -12,9 +12,9 @@ const verifyToken = (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.SECRET_KEY); // Verifikasi token menggunakan SECRET_KEY
-        req.user = decoded; // Simpan informasi pengguna yang terverifikasi di request
-        next(); // Lanjutkan ke request handler berikutnya
+        const decoded = jwt.verify(token, process.env.SECRET_KEY);
+        req.user = decoded;
+        next();
     } catch (error) {
         return res.status(401).send({
             "status": false,

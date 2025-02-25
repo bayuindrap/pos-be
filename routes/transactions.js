@@ -8,7 +8,7 @@ import verifyToken from '../authentication/verifyToken.js';
 dotenv.config()
 const router = express.Router()
 
-// Fungsi untuk mendapatkan ID terakhir transaksi
+
 const getLastTransactionId = () => {
     return new Promise((resolve, reject) => {
         getConnection()
@@ -67,7 +67,7 @@ const getLastTransactionDetailId = () => {
     });
 };
 
-// Fungsi untuk mengurangi stock produk
+
 const updateProductStock = (productId, quantity) => {
     return new Promise((resolve, reject) => {
         getConnection()
@@ -90,7 +90,7 @@ const updateProductStock = (productId, quantity) => {
     });
 };
 
-// Fungsi untuk menambah transaksi
+
 const addTransaction = (transactionData) => {
     return new Promise((resolve, reject) => {
         getConnection()
@@ -120,11 +120,10 @@ const addTransaction = (transactionData) => {
     });
 };
 
-// Modified addTransactionDetails function to handle multiple items correctly
 const addTransactionDetails = async (transactionId, cart, custName, cashierId) => {
     const connection = await getConnection();
     try {
-        // Process each item one by one to ensure unique IDs
+
         for (const item of cart) {
             const detailId = await getLastTransactionDetailId();
             const subtotal = item.PRICE * item.quantity;
@@ -387,7 +386,7 @@ const countTransactionsDetail = (trxId) => {
   };
 
 
-// Route untuk menyimpan transaksi dan detail transaksi
+
 router.post('/add', verifyToken, async (req, res) => {
     try {
         const { cart, amountPaid, change, custName, today, cashierId } = req.body;
@@ -397,10 +396,10 @@ router.post('/add', verifyToken, async (req, res) => {
         const paymentAmount = amountPaid;
         const changeAmount = change;
 
-        // Step 1: Generate new Transaction ID
+       
         const transactionId = await getLastTransactionId();
         
-        // Step 2: Save to transaction table
+     
         const transactionData = {
             ID_TRANSACTIONS: transactionId,
             TRANSACTION_DATE: formattedDateTime,
@@ -411,10 +410,10 @@ router.post('/add', verifyToken, async (req, res) => {
 
         await addTransaction(transactionData);
         
-        // Step 3: Save to transactions_detail table
+      
         await addTransactionDetails(transactionId, cart, custName, cashierId);
         
-        // Step 4: Update stock for each product in the cart
+      
         for (const item of cart) {
             await updateProductStock(item.ID_PRODUCTS, item.quantity);
         }
@@ -514,10 +513,9 @@ router.post('/detail', verifyToken, async (req, res) => {
 
 router.get('/download', verifyToken, async (req, res) => {
     try {
-      const { searchTerm = '', sortBy = '' } = req.query; // Mengambil filter yang diterapkan
+      const { searchTerm = '', sortBy = '' } = req.query; 
   
-      // Mendapatkan transaksi yang sudah difilter
-      let transactions = await selectTransaction(1, 1000, searchTerm, sortBy); // Gunakan parameter pagination atau lainnya sesuai kebutuhan
+      let transactions = await selectTransaction(1, 1000, searchTerm, sortBy); 
   
       if (transactions.length < 1) {
         return res.send({
@@ -535,7 +533,7 @@ router.get('/download', verifyToken, async (req, res) => {
         { header: 'Transaction Date', key: 'DATE', width: 25 },
       ];
   
-      // Menambahkan data transaksi ke worksheet
+   
       transactions.forEach((row) => {
         worksheet.addRow({
           ID_TRANSACTIONS: row.ID_TRANSACTIONS,
@@ -545,7 +543,7 @@ router.get('/download', verifyToken, async (req, res) => {
         });
       });
   
-      // Menambahkan sheet baru untuk detail transaksi
+     
       const detailWorksheet = workbook.addWorksheet('Transaction Details');
       detailWorksheet.columns = [
         { header: 'Transaction ID', key: 'ID_TRANSACTIONS', width: 10 },
@@ -555,7 +553,7 @@ router.get('/download', verifyToken, async (req, res) => {
         { header: 'Total', key: 'TOTAL', width: 10 },
       ];
   
-      // Mendapatkan detail transaksi untuk setiap transaksi yang ada
+     
       for (let transaction of transactions) {
         const details = await selectTransactionDetail(transaction.ID_TRANSACTIONS);
         details.forEach((detail) => {
