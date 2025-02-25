@@ -16,7 +16,7 @@ const selectProducts = (page, limit, searchTerm) => {
           if (page !== undefined && limit !== undefined) {
             const offset = (page - 1) * limit;
             query = `
-                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS, A.ID_CATEGORY
                       FROM PRODUCTS A
                       LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
                       WHERE A.NAME LIKE ?
@@ -25,7 +25,7 @@ const selectProducts = (page, limit, searchTerm) => {
             params = [`%${searchTerm || ''}%`, limit, offset];
           } else {
             query = `
-                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS, A.ID_CATEGORY
                       FROM PRODUCTS A
                       LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
                       WHERE A.NAME LIKE ?
@@ -205,6 +205,45 @@ const getLastProdId = () => {
         });
     });
   };
+
+const deleteProduct = (idProduct) => {
+    return new Promise((resolve, reject) => {
+      getConnection()
+        .then((connection) => {
+          connection.query(
+            'DELETE FROM PRODUCTS WHERE ID_PRODUCTS = ?',
+            [idProduct],
+            (error, elements) => {
+              connection.release();
+              if (error) {
+                return reject(error);
+              }
+              return resolve(elements);
+            },
+          );
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  };
+
+const updateData = (prodName, prodPrice, category, idProduct) => {
+    return new Promise((resolve, reject) => {
+        getConnection().then(connection => {
+            connection.query('UPDATE PRODUCTS SET NAME = ?, PRICE = ?, ID_CATEGORY = ? WHERE ID_PRODUCTS = ?', [prodName, prodPrice, category, idProduct], (error, elements) => {
+                connection.release();
+                if (error) {
+                    return reject(error);
+                }
+                return resolve(elements);
+            });
+          })
+          .catch(error => {
+            reject(error);
+          });
+    });
+};
   
 
 router.post('/', verifyToken, async (req, res) => {
@@ -381,6 +420,30 @@ router.post('/add', verifyToken, async (req, res) => {
     }
   });
 
+router.post('/delete', async (req, res) => {
+    try {
+      const { idProduct } = req.body;
+      const resultsEmelement = await deleteProduct(idProduct);
+      if (resultsEmelement.affectedRows < 0) {
+        return res.status(200).send({
+          status: false,
+          message: 'Delte unsuccesfull',
+        });
+      }
+      return res.status(200).send({
+        status: true,
+        message: 'Delete data success',
+        data: resultsEmelement,
+      });
+    } catch (error) {
+      return res.status(401).send({
+        status: false,
+        message: error.message,
+        data: null,
+      });
+    }
+  });
+
 router.post('/category', verifyToken, async (req, res) => {
     try {
       let resultsElement
@@ -408,5 +471,31 @@ router.post('/category', verifyToken, async (req, res) => {
       });
     }
   });
+
+router.post('/edit', verifyToken, async (req, res) => {
+    try {
+        const {prodName, prodPrice, category, idProduct} = req.body;
+        const resultsEmelement = await updateData(prodName, prodPrice, category, idProduct);
+        if(resultsEmelement.affectedRows < 0){
+            return res.status(200).send({
+                "status": false,
+                "message": `Update ${prodName} unsuccessfull`
+            });
+        }
+        return res.status(200).send({
+            "status": true,
+            "message": "Data product updated",
+            "data": resultsEmelement
+        });
+    } catch (error) {
+        //console.log(error);
+        return res.status(400).send({
+            "status": false,
+            "message": error.message,
+            "data":null
+        });
+    }
+
+});
 
 export default router;

@@ -182,7 +182,7 @@ router.post('/', async(req, res) => {
         const userId = results[0].ID_USERS;
         const token = generateToken(results[0]);
         const refreshToken = generateRefreshToken(results[0]);
-        console.log("liat", refreshToken, userId)
+        // console.log("liat", refreshToken, userId)
         await saveRefreshToken(refreshToken, userId);
          res.send({
             "status": true,
