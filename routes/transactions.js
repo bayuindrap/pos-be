@@ -161,137 +161,53 @@ const addTransactionDetails = async (transactionId, cart, custName, cashierId) =
 };
 
 const selectTransactionDetail = (trxId, page, limit) => {
-    return new Promise((resolve, reject) => {
-      getConnection()
-        .then((connection) => {
-          let query, params;
-          if (page !== undefined && limit !== undefined) {
-            const offset = (page - 1) * limit;
-            query = `
-                      SELECT A.ID_DETAIL_TRANSACTIONS AS TRXID, A.QUANTITY, A.PRICE, A.CUST_NAME, B.TRANSACTION_DATE AS DATE, C.NAMA, D.NAME AS PRODUCT_NAME, E.CATEGORY_NAME
-                      FROM TRANSACTION_DETAIL A
-                      LEFT JOIN TRANSACTIONS B ON A.ID_TRANSACTIONS = B.ID_TRANSACTIONS
-                      LEFT JOIN USERS C ON A.CASHIER_ID = C.ID_USERS
-                      LEFT JOIN PRODUCTS D ON A.ID_PRODUCTS = D.ID_PRODUCTS
-                      LEFT JOIN CATEGORY E ON D.ID_CATEGORY = E.ID_CATEGORY
-                      WHERE A.ID_TRANSACTIONS = ?
-                      LIMIT ? OFFSET ?
-                  `;
-            params = [trxId, limit, offset];
-          } else {
-            query = `
-                      SELECT A.ID_DETAIL_TRANSACTIONS AS TRXID, A.QUANTITY, A.PRICE, A.CUST_NAME, B.TRANSACTION_DATE AS DATE, C.NAMA, D.NAME AS PRODUCT_NAME, E.CATEGORY_NAME
-                      FROM TRANSACTION_DETAIL A
-                      LEFT JOIN TRANSACTIONS B ON A.ID_TRANSACTIONS = B.ID_TRANSACTIONS
-                      LEFT JOIN USERS C ON A.CASHIER_ID = C.ID_USERS
-                      LEFT JOIN PRODUCTS D ON A.ID_PRODUCTS = D.ID_PRODUCTS
-                      LEFT JOIN CATEGORY E ON D.ID_CATEGORY = E.ID_CATEGORY
-                      WHERE A.ID_TRANSACTIONS = ?
-                  `;
-            params = [trxId];
-          }
-          connection.query(query, params, (error, elements) => {
-            connection.release();
-            if (error) {
-              return reject(error);
-            }
-            return resolve(elements);
-          });
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
-  };
-
-// const selectTransaction = (page, limit, searchTerm) => {
-//     return new Promise((resolve, reject) => {
-//       getConnection()
-//         .then((connection) => {
-//           let query, params;
-//           if (page !== undefined && limit !== undefined) {
-//             const offset = (page - 1) * limit;
-//             query = `
-//                       SELECT A.ID_TRANSACTIONS, A.TRANSACTION_DATE AS DATE, A.TOTAL_AMOUNT, B.CUST_NAME
-//                       FROM TRANSACTIONS A
-//                       LEFT JOIN TRANSACTION_DETAIL B ON A.ID_TRANSACTIONS = B.ID_TRANSACTIONS
-//                       GROUP BY A.ID_TRANSACTIONS, A.TRANSACTION_DATE, A.TOTAL_AMOUNT
-//                       WHERE B.CUST_NAME = ?
-//                       LIMIT ? OFFSET ?
-//                   `;
-//             params = [`%${searchTerm || ''}%`,limit, offset];
-//           } else {
-//             query = `
-//                       SELECT A.ID_TRANSACTIONS, A.TRANSACTION_DATE AS DATE, A.TOTAL_AMOUNT, B.CUST_NAME
-//                       FROM TRANSACTIONS A
-//                       LEFT JOIN TRANSACTION_DETAIL B ON A.ID_TRANSACTIONS = B.ID_TRANSACTIONS
-//                       GROUP BY A.ID_TRANSACTIONS, A.TRANSACTION_DATE, A.TOTAL_AMOUNT
-//                       WHERE B.CUST_NAME = ?
-//                   `;
-//             params = [`%${searchTerm || ''}%`,];
-//           }
-//           connection.query(query, params, (error, elements) => {
-//             connection.release();
-//             if (error) {
-//               return reject(error);
-//             }
-//             return resolve(elements);
-//           });
-//         })
-//         .catch((error) => {
-//           reject(error);
-//         });
-//     });
-//   };
-
-
-///////////////////////////////////////////////
-
-
-// const selectTransaction = (page, limit, searchTerm, sortQuery) => {
-//   return new Promise((resolve, reject) => {
-//     getConnection()
-//       .then((connection) => {
-//         let query = `
-//           SELECT DISTINCT A.ID_TRANSACTIONS, A.TRANSACTION_DATE AS DATE, A.TOTAL_AMOUNT, B.CUST_NAME
-//           FROM TRANSACTIONS A
-//           LEFT JOIN TRANSACTION_DETAIL B ON A.ID_TRANSACTIONS = B.ID_TRANSACTIONS
-//           WHERE B.CUST_NAME LIKE ?
-//           ${sortQuery}  -- Pastikan ini tidak menyebabkan duplikasi
-//           LIMIT ? OFFSET ?
-//         `;
-//         const offset = (page - 1) * limit;
-//         const params = [`%${searchTerm || ''}%`, limit, offset];
-
-//         connection.query(query, params, (error, elements) => {
-//           connection.release();
-//           if (error) {
-//             return reject(error);
-//           }
-//           return resolve(elements);
-//         });
-//       })
-//       .catch((error) => {
-//         reject(error);
-//       });
-//   });
-// };
-
-const selectTransaction = (page, limit, searchTerm, sortQuery) => {
   return new Promise((resolve, reject) => {
     getConnection()
       .then((connection) => {
-        let query = `
-          SELECT DISTINCT A.ID_TRANSACTIONS, A.TRANSACTION_DATE AS DATE, A.TOTAL_AMOUNT, B.CUST_NAME
-          FROM TRANSACTIONS A
-          LEFT JOIN TRANSACTION_DETAIL B ON A.ID_TRANSACTIONS = B.ID_TRANSACTIONS
-          WHERE B.CUST_NAME LIKE ?
-          ${sortQuery}
-          LIMIT ? OFFSET ?
-        `;
-        const offset = (page - 1) * limit;
-        const params = [`%${searchTerm || ''}%`, limit, offset];
-
+        let query, params;
+        if (page !== undefined && limit !== undefined) {
+          const offset = (page - 1) * limit;
+          query = `
+                    SELECT 
+                        A.ID_DETAIL_TRANSACTIONS AS TRXID, 
+                        A.QUANTITY, 
+                        A.PRICE, 
+                        A.CUST_NAME, 
+                        B.TRANSACTION_DATE AS DATE, 
+                        C.NAMA, 
+                        D.NAME AS PRODUCT_NAME, 
+                        E.CATEGORY_NAME
+                    FROM TRANSACTION_DETAIL A
+                    LEFT JOIN TRANSACTIONS B ON A.ID_TRANSACTIONS = B.ID_TRANSACTIONS
+                    LEFT JOIN USERS C ON A.CASHIER_ID = C.ID_USERS
+                    LEFT JOIN PRODUCTS D ON A.ID_PRODUCTS = D.ID_PRODUCTS
+                    LEFT JOIN CATEGORY E ON D.ID_CATEGORY = E.ID_CATEGORY
+                    WHERE A.ID_TRANSACTIONS = ?
+                    GROUP BY A.ID_PRODUCTS, A.ID_TRANSACTIONS, D.NAME, A.QUANTITY, A.PRICE
+                    LIMIT ? OFFSET ?
+                `;
+          params = [trxId, limit, offset];
+        } else {
+          query = `
+                    SELECT 
+                        A.ID_DETAIL_TRANSACTIONS AS TRXID, 
+                        A.QUANTITY, 
+                        A.PRICE, 
+                        A.CUST_NAME, 
+                        B.TRANSACTION_DATE AS DATE, 
+                        C.NAMA, 
+                        D.NAME AS PRODUCT_NAME, 
+                        E.CATEGORY_NAME
+                    FROM TRANSACTION_DETAIL A
+                    LEFT JOIN TRANSACTIONS B ON A.ID_TRANSACTIONS = B.ID_TRANSACTIONS
+                    LEFT JOIN USERS C ON A.CASHIER_ID = C.ID_USERS
+                    LEFT JOIN PRODUCTS D ON A.ID_PRODUCTS = D.ID_PRODUCTS
+                    LEFT JOIN CATEGORY E ON D.ID_CATEGORY = E.ID_CATEGORY
+                    WHERE A.ID_TRANSACTIONS = ?
+                    GROUP BY A.ID_PRODUCTS, A.ID_TRANSACTIONS, D.NAME, A.QUANTITY, A.PRICE
+                `;
+          params = [trxId];
+        }
         connection.query(query, params, (error, elements) => {
           connection.release();
           if (error) {
@@ -306,9 +222,40 @@ const selectTransaction = (page, limit, searchTerm, sortQuery) => {
   });
 };
 
+///////////////////////////////////////////////
 
 
-
+const selectTransaction = (page, limit, searchTerm, sortQuery) => {
+  return new Promise((resolve, reject) => {
+    getConnection()
+      .then((connection) => {
+        let query = `
+          SELECT DISTINCT A.ID_TRANSACTIONS, A.TRANSACTION_DATE AS DATE, A.TOTAL_AMOUNT, 
+                 (SELECT CUST_NAME FROM TRANSACTION_DETAIL WHERE ID_TRANSACTIONS = A.ID_TRANSACTIONS LIMIT 1) AS CUST_NAME
+          FROM TRANSACTIONS A
+          WHERE EXISTS (
+            SELECT 1 FROM TRANSACTION_DETAIL B 
+            WHERE B.ID_TRANSACTIONS = A.ID_TRANSACTIONS 
+            AND B.CUST_NAME LIKE ?
+          )
+          ${sortQuery}
+          LIMIT ? OFFSET ?
+        `;
+        const offset = (page - 1) * limit;
+        const params = [`%${searchTerm || ''}%`, limit, offset];
+        connection.query(query, params, (error, elements) => {
+          connection.release();
+          if (error) {
+            return reject(error);
+          }
+          return resolve(elements);
+        });
+      })
+      .catch((error) => {
+        reject(error);
+      });
+  });
+};
 
 // const countTransaction = (searchTerm) => {
 //   return new Promise((resolve, reject) => {
@@ -390,8 +337,8 @@ const countTransactionsDetail = (trxId) => {
 router.post('/add', verifyToken, async (req, res) => {
     try {
         const { cart, amountPaid, change, custName, today, cashierId } = req.body;
-
-        const formattedDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
+        // console.log("cek date", today)
+        const transactionDate = today ? moment(`${today} ${moment().format('HH:mm:ss')}`).format('YYYY-MM-DD HH:mm:ss') : moment().format('YYYY-MM-DD HH:mm:ss');
         const totalAmount = cart.reduce((acc, item) => acc + (item.PRICE * item.quantity), 0);
         const paymentAmount = amountPaid;
         const changeAmount = change;
@@ -402,7 +349,7 @@ router.post('/add', verifyToken, async (req, res) => {
      
         const transactionData = {
             ID_TRANSACTIONS: transactionId,
-            TRANSACTION_DATE: formattedDateTime,
+            TRANSACTION_DATE: transactionDate,
             TOTAL_AMOUNT: totalAmount,
             PAYMENT_AMOUNT: paymentAmount,
             CHANGE_AMOUNT: changeAmount
@@ -513,17 +460,17 @@ router.post('/detail', verifyToken, async (req, res) => {
 
 router.get('/download', verifyToken, async (req, res) => {
     try {
-      const { searchTerm = '', sortBy = '' } = req.query; 
-  
-      let transactions = await selectTransaction(1, 1000, searchTerm, sortBy); 
-  
+      const { searchTerm = '', sortBy = '' } = req.query;
+ 
+      let transactions = await selectTransaction(1, 1000, searchTerm, sortBy);
+ 
       if (transactions.length < 1) {
         return res.send({
           status: false,
           message: 'Download Failed, no data found',
         });
       }
-  
+ 
       const workbook = new Excel.Workbook();
       const worksheet = workbook.addWorksheet('Transactions');
       worksheet.columns = [
@@ -532,41 +479,51 @@ router.get('/download', verifyToken, async (req, res) => {
         { header: 'Total Amount', key: 'TOTAL_AMOUNT', width: 10 },
         { header: 'Transaction Date', key: 'DATE', width: 25 },
       ];
-  
-   
+ 
+      const uniqueTransactions = new Set();
       transactions.forEach((row) => {
-        worksheet.addRow({
-          ID_TRANSACTIONS: row.ID_TRANSACTIONS,
-          CUST_NAME: row.CUST_NAME,
-          TOTAL_AMOUNT: row.TOTAL_AMOUNT,
-          DATE: row.DATE,
-        });
+        if (!uniqueTransactions.has(row.ID_TRANSACTIONS)) {
+          worksheet.addRow({
+            ID_TRANSACTIONS: row.ID_TRANSACTIONS,
+            CUST_NAME: row.CUST_NAME,
+            TOTAL_AMOUNT: row.TOTAL_AMOUNT,
+            DATE: row.DATE,
+          });
+          uniqueTransactions.add(row.ID_TRANSACTIONS);
+        }
       });
-  
-     
+ 
       const detailWorksheet = workbook.addWorksheet('Transaction Details');
       detailWorksheet.columns = [
-        { header: 'Transaction ID', key: 'ID_TRANSACTIONS', width: 10 },
+        { header: 'Transaction Id', key: 'ID_TRANSACTIONS', width: 10 },
         { header: 'Product Name', key: 'PRODUCT_NAME', width: 20 },
         { header: 'Quantity', key: 'QUANTITY', width: 10 },
         { header: 'Price', key: 'PRICE', width: 10 },
         { header: 'Total', key: 'TOTAL', width: 10 },
       ];
-  
-     
+ 
+      const addedDetails = new Set();
+ 
       for (let transaction of transactions) {
         const details = await selectTransactionDetail(transaction.ID_TRANSACTIONS);
+        
         details.forEach((detail) => {
-          detailWorksheet.addRow({
-            ID_TRANSACTIONS: transaction.ID_TRANSACTIONS,
-            PRODUCT_NAME: detail.PRODUCT_NAME,
-            QUANTITY: detail.QUANTITY,
-            PRICE: detail.PRICE,
-            TOTAL: detail.PRICE * detail.QUANTITY,
-          });
+          const detailKey = `${transaction.ID_TRANSACTIONS}-${detail.PRODUCT_NAME}`; 
+ 
+          if (!addedDetails.has(detailKey)) {
+            detailWorksheet.addRow({
+              ID_TRANSACTIONS: transaction.ID_TRANSACTIONS,
+              PRODUCT_NAME: detail.PRODUCT_NAME,
+              QUANTITY: detail.QUANTITY,
+              PRICE: detail.PRICE,
+              TOTAL: detail.PRICE * detail.QUANTITY,
+            });
+ 
+            addedDetails.add(detailKey);
+          }
         });
       }
-  
+ 
       const fileName = 'transaction-data.xlsx';
       res.setHeader(
         'Content-Type',
@@ -582,5 +539,6 @@ router.get('/download', verifyToken, async (req, res) => {
       });
     }
   });
+  
 
 export default router;

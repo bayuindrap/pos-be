@@ -16,7 +16,7 @@ const selectProducts = (page, limit, searchTerm) => {
           if (page !== undefined && limit !== undefined) {
             const offset = (page - 1) * limit;
             query = `
-                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS, A.ID_CATEGORY
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS, A.ID_CATEGORY, A.STATUS
                       FROM PRODUCTS A
                       LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
                       WHERE A.NAME LIKE ?
@@ -25,10 +25,48 @@ const selectProducts = (page, limit, searchTerm) => {
             params = [`%${searchTerm || ''}%`, limit, offset];
           } else {
             query = `
-                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS, A.ID_CATEGORY
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS, A.ID_CATEGORY, A.STATUS
                       FROM PRODUCTS A
                       LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
                       WHERE A.NAME LIKE ?
+                  `;
+            params = [`%${searchTerm || ''}%`];
+          }
+          connection.query(query, params, (error, elements) => {
+            connection.release();
+            if (error) {
+              return reject(error);
+            }
+            return resolve(elements);
+          });
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  };
+
+const selectProductPOS = (page, limit, searchTerm) => {
+    return new Promise((resolve, reject) => {
+      getConnection()
+        .then((connection) => {
+          let query, params;
+          if (page !== undefined && limit !== undefined) {
+            const offset = (page - 1) * limit;
+            query = `
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS, A.ID_CATEGORY, A.STATUS
+                      FROM PRODUCTS A
+                      LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
+                      WHERE A.NAME LIKE ? AND STATUS = '1'
+                      LIMIT ? OFFSET ?
+                  `;
+            params = [`%${searchTerm || ''}%`, limit, offset];
+          } else {
+            query = `
+                      SELECT A.NAME, A.PRICE, A.STOCK, A.IMAGE, B.CATEGORY_NAME AS CATEGORY, A.IMAGE, A.ID_PRODUCTS, A.ID_CATEGORY, A.STATUS
+                      FROM PRODUCTS A
+                      LEFT JOIN CATEGORY B ON A.ID_CATEGORY = B.ID_CATEGORY
+                      WHERE A.NAME LIKE ? AND STATUS = '1'
                   `;
             params = [`%${searchTerm || ''}%`];
           }
@@ -96,23 +134,65 @@ const countProducts = (searchTerm) => {
     });
   };
 
+const countProductPOS = (searchTerm) => {
+    return new Promise((resolve, reject) => {
+      getConnection()
+        .then((connection) => {
+          const query = `
+                  SELECT COUNT(*) AS total
+                  FROM PRODUCTS
+                  WHERE NAME LIKE ? AND STATUS = '1'
+              `;
+          const params = [`%${searchTerm}%`];
+          connection.query(query, params, (error, results) => {
+            connection.release();
+            if (error) {
+              return reject(error);
+            }
+            return resolve(results[0].total);
+          });
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  };
+
 const checkProductExists = (productName) => {
+  return new Promise((resolve, reject) => {
+    getConnection()
+      .then((connection) => {
+        connection.query(
+          `SELECT * FROM PRODUCTS WHERE NAME = ?`,
+          [productName],
+          (error, results) => {
+            connection.release();
+            if (error) {
+              return reject(error);
+            }
+            return resolve(results.length > 0 ? results[0] : null);
+          }
+        );
+      })
+      .catch((error) => {
+        reject(error);
+      });
+  });
+  };
+
+const updateProductStock = (idProduct, additionalStock) => {
     return new Promise((resolve, reject) => {
       getConnection()
         .then((connection) => {
           connection.query(
-            `SELECT COUNT(*) AS count FROM PRODUCTS WHERE NAME = ?`,
-            [productName],
+            `UPDATE PRODUCTS SET STOCK = STOCK + ? WHERE ID_PRODUCTS = ?`,
+            [additionalStock, idProduct],
             (error, results) => {
               connection.release();
               if (error) {
                 return reject(error);
               }
-              if (results[0].count > 0) {
-                return resolve(true);
-              } else {
-                return resolve(false);
-              }
+              return resolve(results);
             }
           );
         })
@@ -228,10 +308,10 @@ const deleteProduct = (idProduct) => {
     });
   };
 
-const updateData = (prodName, prodPrice, category, idProduct) => {
+const updateData = (prodName, prodPrice, category, status, idProduct) => {
     return new Promise((resolve, reject) => {
         getConnection().then(connection => {
-            connection.query('UPDATE PRODUCTS SET NAME = ?, PRICE = ?, ID_CATEGORY = ? WHERE ID_PRODUCTS = ?', [prodName, prodPrice, category, idProduct], (error, elements) => {
+            connection.query('UPDATE PRODUCTS SET NAME = ?, PRICE = ?, ID_CATEGORY = ?, STATUS = ? WHERE ID_PRODUCTS = ?', [prodName, prodPrice, category, status, idProduct], (error, elements) => {
                 connection.release();
                 if (error) {
                     return reject(error);
@@ -253,6 +333,37 @@ router.post('/', verifyToken, async (req, res) => {
   
         resultsElement = await selectProducts(page, limit, searchTerm);
         totalItems = await countProducts(searchTerm);
+
+      if (resultsElement.length === 0) {
+        return res.status(200).send({
+          status: false,
+          message: 'Data not found.',
+          data: [],
+          totalItems: 0,
+        });
+      }
+      return res.status(200).send({
+        status: true,
+        message: 'Data available',
+        data: resultsElement,
+        totalItems: totalItems,
+      });
+    } catch (error) {
+      return res.status(500).send({
+        status: false,
+        message: error.message,
+        data: [],
+      });
+    }
+  });
+
+router.post('/pos', verifyToken, async (req, res) => {
+    try {
+      const { page = '', limit = '', searchTerm = ''} = req.body;
+      let resultsElement, totalItems;
+  
+        resultsElement = await selectProductPOS(page, limit, searchTerm);
+        totalItems = await countProductPOS(searchTerm);
 
       if (resultsElement.length === 0) {
         return res.status(200).send({
@@ -345,7 +456,7 @@ router.get('/download', verifyToken, async (req, res) => {
       });
     } catch (error) {
       //console.log(error);
-      return res.status(401).send({
+      return res.status(400).send({
         status: false,
         message: error.message,
       });
@@ -361,7 +472,7 @@ router.post('/add', verifyToken, async (req, res) => {
         stock,
         imageUrl
       } = req.body;
-  
+ 
       if (!prodName) {
         return res.status(200).send({
           status: false,
@@ -386,16 +497,18 @@ router.post('/add', verifyToken, async (req, res) => {
           message: 'Stock cant be empty',
         });
       }
-      const productExists = await checkProductExists(prodName);
-      if (productExists) {
-        return res.status(401).send({
+      
+      const existingProduct = await checkProductExists(prodName);
+      if (existingProduct) {
+        return res.status(200).send({
           status: false,
-          message: 'Product with this name already exists',
+          message: 'Product already exists',
+          data: existingProduct
         });
       }
-
-      const prodId = await getLastProdId()
       
+      const prodId = await getLastProdId()
+     
       const dataProducts = {
        PRODUCT_ID: prodId,
        PRODUCT_NAME: prodName,
@@ -405,15 +518,14 @@ router.post('/add', verifyToken, async (req, res) => {
        IMAGE: imageUrl
       };
       await addProducts(dataProducts);
-  
+ 
       return res.status(200).send({
         status: true,
         message: 'Add product success',
       });
     } catch (error) {
-      //console.log(error);
-      return res.status(401).send({
-        status: true,
+      return res.status(400).send({
+        status: false,
         message: error.message,
         data: null,
       });
@@ -436,7 +548,7 @@ router.post('/delete', async (req, res) => {
         data: resultsEmelement,
       });
     } catch (error) {
-      return res.status(401).send({
+      return res.status(400).send({
         status: false,
         message: error.message,
         data: null,
@@ -474,8 +586,8 @@ router.post('/category', verifyToken, async (req, res) => {
 
 router.post('/edit', verifyToken, async (req, res) => {
     try {
-        const {prodName, prodPrice, category, idProduct} = req.body;
-        const resultsEmelement = await updateData(prodName, prodPrice, category, idProduct);
+        const {prodName, prodPrice, category, status, idProduct} = req.body;
+        const resultsEmelement = await updateData(prodName, prodPrice, category, status, idProduct);
         if(resultsEmelement.affectedRows < 0){
             return res.status(200).send({
                 "status": false,
@@ -496,6 +608,39 @@ router.post('/edit', verifyToken, async (req, res) => {
         });
     }
 
+});
+
+router.post('/update-stock', verifyToken, async (req, res) => {
+  try {
+    const { idProduct, additionalStock } = req.body;
+
+    if (!idProduct) {
+      return res.status(200).send({
+        status: false,
+        message: 'Product id cant be empty',
+      });
+    }
+
+    if (!additionalStock || additionalStock <= 0) {
+      return res.status(200).send({
+        status: false,
+        message: 'Invalid stock amount',
+      });
+    }
+
+    await updateProductStock(idProduct, additionalStock);
+
+    return res.status(200).send({
+      status: true,
+      message: 'Stock updated successfully',
+    });
+  } catch (error) {
+    return res.status(400).send({
+      status: false,
+      message: error.message,
+      data: null,
+    });
+  }
 });
 
 export default router;
