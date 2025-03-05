@@ -268,10 +268,10 @@ const getLastProdId = () => {
                 
                 const lastId = results[0].ID_PRODUCTS;
   
-                // Ekstrak bagian numerik dari lastId menggunakan regex untuk menangani format yang berbeda (VID00010, VID00100, dll)
+                
                 const numericPart = parseInt(lastId.match(/\d+/)[0]);
   
-                // Tambahkan 1 ke bagian numerik dan pad dengan nol di depan agar memiliki 5 digit
+               
                 const newId = 'GLS' + String(numericPart + 1).padStart(3, '0');
                 return resolve(newId);
               } else {
