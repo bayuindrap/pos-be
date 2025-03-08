@@ -209,9 +209,9 @@ const addProducts = (dataProducts) => {
         .then((connection) => {
           connection.query(
             `INSERT INTO PRODUCTS ` +
-              `(ID_PRODUCTS, NAME, PRICE, ID_CATEGORY, STOCK, IMAGE)` +
-              `VALUES(?, ?, ?, ?, ?, ?)`,
-            [dataProducts.PRODUCT_ID, dataProducts.PRODUCT_NAME, dataProducts.PRICE, dataProducts.CATEGORY, dataProducts.STOCK, dataProducts.IMAGE],
+              `(ID_PRODUCTS, NAME, PRICE, ID_CATEGORY, STOCK, IMAGE, STATUS)` +
+              `VALUES(?, ?, ?, ?, ?, ?, ?)`,
+            [dataProducts.PRODUCT_ID, dataProducts.PRODUCT_NAME, dataProducts.PRICE, dataProducts.CATEGORY, dataProducts.STOCK, dataProducts.IMAGE, '1'],
             (error, elements) => {
               connection.release();
               if (error) {
@@ -532,7 +532,7 @@ router.post('/add', verifyToken, async (req, res) => {
     }
   });
 
-router.post('/delete', async (req, res) => {
+router.post('/delete', verifyToken, async (req, res) => {
     try {
       const { idProduct } = req.body;
       const resultsEmelement = await deleteProduct(idProduct);

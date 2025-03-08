@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from 'dotenv'
 import jwt from 'jsonwebtoken';
 import fs from 'fs'
+import crypto from "crypto";
 import {getConnection} from '../config/db.js'
 
 dotenv.config()
@@ -118,6 +119,27 @@ const verifyRefreshToken = (refreshToken) => {
       });
     });
   };
+
+//   const register = (userData) => {
+//     return new Promise((resolve, reject) => {
+//         getConnection().then(connection => {
+//             connection.query(`INSERT INTO  `+
+//             `() `+
+//             `VALUES(?)`
+//             , [userData], (error, elements) => {
+//                 connection.release();
+//                 if (error) {
+//                     return reject(error);
+//                 }
+//                 return resolve(elements);
+//             });
+//           })
+//           .catch(error => {
+//             reject(error);
+//           });
+//     });
+// };
+
   
   router.post('/refresh', async (req, res) => {
     try {
@@ -171,10 +193,11 @@ const verifyRefreshToken = (refreshToken) => {
 router.post('/', async(req, res) => {
     try {
         const {username, pass} = req.body
+        // const hash = crypto.createHash('sha256').update(pass).digest('hex');
         const results = await selectUser(username, pass)
 
         if (results.length < 1) {
-            return res.status(401).send({
+            return res.status(400).send({
                 "status": false,
                 "message": "Invalid username / password",
             });
@@ -228,5 +251,40 @@ router.post('/updateToken', async (req, res) => {
     }
 
 });
+
+// router.post('/register', async (req, res) => {
+//       const {} = req.body;
+
+//       if(!name){
+//           return res.status(200).send({
+//               "status": false,
+//               "message": "Name is required"
+//           });
+//       }
+//       if(!password){
+//           return res.status(200).send({
+//               "status": false,
+//               "message": "Password is required"
+//           });
+//       }
+//       const hash = crypto.createHash('sha256').update(password).digest('hex');
+//       const emailChecks = await emailCheck(email);
+//       if(emailChecks.length > 0){
+//           return res.status(200).send({
+//               "status": false,
+//               "message": "User already registered"
+//           });
+//       }
+ 
+//       const dataToInsertUsr = {
+          
+//       }
+//       await regis(dataToInsertUsr);
+//       return res.send({
+//           "status": true,
+//           "message": "Register Success",
+//           "data": null
+//       });
+// });
 
 export default router
